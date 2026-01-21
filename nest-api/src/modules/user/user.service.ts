@@ -1,6 +1,6 @@
 import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
-import { DrizzleAsyncProvider } from '../../drizzle/drizzle.provider';
+import { DrizzleAsyncProvider, PgPoolProvider } from '../../drizzle/drizzle.provider';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../drizzle/schema';
 import {
@@ -18,18 +18,21 @@ import {
   ilike,
   inArray,
   SQL,
+  sql,
 } from 'drizzle-orm';
 import { extractField } from 'src/untils';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ConfigEnum } from '../../enum/config.enum';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import * as argon2 from 'argon2';
+import { Pool } from 'pg';
 
 @Injectable()
 export class UserService {
   constructor(
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     @Inject(DrizzleAsyncProvider) private conn: NodePgDatabase<typeof schema>,
+    @Inject(PgPoolProvider) private pool: Pool,
   ) {}
 
   async create(data: CreateUserDto) {
@@ -52,14 +55,24 @@ export class UserService {
   }
 
   async findOneByUserName(userName: string) {
-    const userInfo = await this.conn
-      .select({
-        id: userTable.id,
-        password: userTable.password,
-      })
-      .from(userTable)
-      .where(eq(userTable.userName, userName));
-    return userInfo[0] || null;
+    // 直接使用 pool 执行原生 SQL
+    try {
+      const result = await this.pool.query(
+        'SELECT id, password FROM "user" WHERE user_name = $1 AND deleted_at IS NULL LIMIT 1',
+        [userName]
+      );
+      console.log(`[LOGIN DEBUG] Query for user "${userName}":`, result.rows);
+      if (result.rows.length === 0) {
+        return null;
+      }
+      return {
+        id: result.rows[0].id,
+        password: result.rows[0].password,
+      };
+    } catch (error) {
+      console.error(`[LOGIN ERROR] Error querying user:`, error);
+      return null;
+    }
   }
 
   async findAll(searchParam: FilterParam<Partial<CreateUserDto>>) {

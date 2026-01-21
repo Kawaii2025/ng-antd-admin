@@ -89,7 +89,7 @@ export class AccountModalComponent extends BasicConfirmModalComponent implements
   initForm(): void {
     this.addEditForm = this.fb.group({
       userName: [null, [Validators.required]],
-      password: ['a123456', [Validators.required, this.validatorsService.passwordValidator()]],
+      password: ['admin123', [Validators.required, this.validatorsService.passwordValidator()]],
       sex: [1],
       available: [true],
       telephone: [null, [this.validatorsService.telephoneValidator()]],

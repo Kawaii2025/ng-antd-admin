@@ -5,18 +5,24 @@ import { ConfigService } from '@nestjs/config';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 
 export const DrizzleAsyncProvider = 'DrizzleAsyncProvider';
+export const PgPoolProvider = 'PgPoolProvider';
 
 export const drizzleProvider = [
   {
-    provide: DrizzleAsyncProvider,
+    provide: PgPoolProvider,
     inject: [ConfigService],
     useFactory: async (configService: ConfigService) => {
       const connectionString = configService.get<string>('DATABASE_URL');
-      // 创建一个node-postgres驱动程序实例，可以使用db.$client访问 pool
       const pool = new Pool({
         connectionString,
       });
-
+      return pool;
+    },
+  },
+  {
+    provide: DrizzleAsyncProvider,
+    inject: [PgPoolProvider],
+    useFactory: async (pool: Pool) => {
       // 所有驼峰都改为下划线别名
       return drizzle({
         client: pool,
