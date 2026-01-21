@@ -4,7 +4,13 @@ import * as Joi from 'joi'; // 对环境变量进行校验
 import * as process from 'node:process';
 
 // 环境变量加载顺序，数组元素索引靠前的优先级高
-const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
+// .local 文件优先级最高，其次是环境相关的文件
+const envFilePath = [
+  `.env.${process.env.NODE_ENV || 'development'}.local`,
+  `.env.${process.env.NODE_ENV || 'development'}`,
+  '.env.local',
+  '.env'
+];
 
 // 对环境变量进行校验
 const schema = Joi.object({

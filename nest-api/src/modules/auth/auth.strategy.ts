@@ -4,6 +4,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ConfigEnum } from '../../enum/config.enum';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
+import { PgPoolProvider } from '../../drizzle/drizzle.provider';
 import { Pool } from 'pg';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     protected configService: ConfigService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    @Inject(PgPoolProvider) private pool: Pool,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(), // jwt -> sign ->payload校
@@ -37,9 +39,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       }
 
       // Query database for user permissions
-      const connectionString = this.configService.get<string>('DATABASE_URL');
-      const pool = new Pool({ connectionString });
-      const client = await pool.connect();
+      const client = await this.pool.connect();
 
       try {
         const result = await client.query(
@@ -60,7 +60,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         );
       } finally {
         client.release();
-        await pool.end();
       }
     } catch (error) {
       console.error('[JWT] Error loading permissions:', error);
