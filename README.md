@@ -146,7 +146,9 @@ npm start
 ### 方式二：完整全栈版 (前端 + 后端)
 适合需要二次开发完整业务系统的场景。
 
-#### 1. 启动后端 (NestJS)
+#### 后端数据库配置（两种方案）
+
+**方案 A：本地 PostgreSQL (Docker)**
 ```bash
 # 1. 确保已安装 Docker
 docker --version
@@ -162,13 +164,69 @@ docker-compose up -d
 # 主机: localhost / 用户名: admin / 密码: 123456
 # 数据库: ng-antd-admin-db
 # 执行文件: nest-api/ng-antd-admin-db.sql
-
-# 5. 安装依赖并启动
-npm install
-npm run start
 ```
 
-#### 2. 启动前端
+**方案 B：Neon 云数据库 (推荐用于生产/演示)**
+
+Neon 是一个云托管的 PostgreSQL 服务，无需本地维护数据库基础设施。
+
+##### 1. 创建 Neon 账户并获取连接字符串
+- 访问 [neon.tech](https://neon.tech)
+- 使用 Google/GitHub 登录或注册
+- 创建新项目获取 PostgreSQL 连接字符串
+- 连接字符串格式：
+  ```
+  postgresql://username:password@host/database?sslmode=require&channel_binding=require
+  ```
+
+##### 2. 配置环境变量
+在 `nest-api` 目录中创建 `.env.development.local` 文件（**此文件不会上传到 Git**）：
+
+```dotenv
+# nest-api/.env.development.local
+DATABASE_URL="postgresql://your_username:your_password@your_host/your_db?sslmode=require&channel_binding=require"
+SECRET='your-jwt-secret-key'
+```
+
+> ⚠️ **重要**：`.local` 文件已被 `.gitignore` 忽略，确保敏感信息不会泄露。
+
+##### 3. 初始化数据库并插入数据
+```bash
+cd nest-api
+
+# 方式 1：使用脚本自动执行 SQL
+# 推荐：移除 ALTER OWNER 语句的脚本（Neon 不支持修改 Owner）
+node execute-sql-fixed.js
+
+# 方式 2：手动导入（使用 Neon 控制面板或 SQL 客户端）
+# 1. 在 Neon 仪表板中打开 SQL Editor
+# 2. 复制 ng-antd-admin-db.sql 全部内容
+# 3. 执行 SQL 脚本
+```
+
+##### 4. 验证数据导入
+```bash
+# 查看已插入的数据
+node check-users.js          # 验证用户数据
+node check-menu-order.js     # 验证菜单数据
+node check-permissions.js    # 验证权限数据
+```
+
+#### 启动后端应用
+
+```bash
+# 1. 安装依赖
+npm install
+
+# 2. 启动开发服务器（监听文件变化自动重启）
+npm run start:dev
+
+# 3. 验证服务是否启动
+# API 服务运行在 http://localhost:3000
+```
+
+#### 启动前端应用
+
 ```bash
 # 1. 进入前端目录
 cd ui
@@ -181,6 +239,37 @@ npm start
 
 # 4. 浏览器访问 http://localhost:4201
 ```
+
+#### 测试应用
+
+##### 后端 API 测试
+```bash
+# 1. 登录获取 JWT Token
+curl -X POST http://localhost:3000/auth/signin \
+  -H "Content-Type: application/json" \
+  -d '{"user_name":"admin","password":"admin123"}'
+
+# 返回结果示例：
+# {
+#   "code": 200,
+#   "msg": "SUCCESS",
+#   "data": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+# }
+
+# 2. 使用 Token 访问受保护的资源
+curl -X POST http://localhost:3000/user/list \
+  -H "Authorization: Bearer your_token_here" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+##### 前端登录测试
+- 打开浏览器访问 http://localhost:4201
+- 登录账号：`admin`
+- 登录密码：`admin123`
+- 成功登录后可访问系统内所有功能
+
+
 
 ### 方式三：纯净版 (零业务代码)
 仅保留基础架构，适合直接对接已有后端 API。
