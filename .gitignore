@@ -43,3 +43,10 @@ testem.log
 Thumbs.db
 
 scripts
+# Environment variables with sensitive information
+.env
+.env.local
+.env.*.local
+nest-api/.env
+nest-api/.env.local
+nest-api/.env.*.local
